@@ -1,0 +1,139 @@
+version: "3.9"  
+services:
+  kafka-1:
+    image: confluentinc/cp-kafka:7.0.1
+    ports:
+      - "29091:29091" 
+      - "9091:9091"
+    environment:
+      KAFKA_CLUSTER_ID: cluster
+      KAFKA_BROKER_RACK: r1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181 
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-1:29091,PLAINTEXT_INTERNAL://localhost:9091 
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    depends_on:
+      - zookeeper 
+    networks:
+      - app-network
+  kafka-2:
+    image: confluentinc/cp-kafka:7.0.1
+    ports:
+      - "29092:29092" 
+      - "9092:9092" 
+    environment:
+      KAFKA_CLUSTER_ID: cluster
+      KAFKA_BROKER_RACK: r2
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181 
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-2:29092,PLAINTEXT_INTERNAL://localhost:9092 
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    depends_on:
+      - zookeeper 
+    networks:
+      - app-network
+  kafka-3:
+    image: confluentinc/cp-kafka:7.0.1
+    ports:
+      - "29093:29093" 
+      - "9093:9093" 
+    environment:
+      KAFKA_CLUSTER_ID: cluster
+      KAFKA_BROKER_RACK: r3
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181 
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-3:29093,PLAINTEXT_INTERNAL://localhost:9093 
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    depends_on:
+      - zookeeper 
+    networks:
+      - app-network
+  init-kafka:
+    image: confluentinc/cp-kafka:7.0.1
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+    entrypoint: [ '/bin/sh', '-c' ]
+    command: |
+      "
+      echo -e 'Creating kafka topics'
+      kafka-topics --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --create --if-not-exists --topic chunk_embed_in --replication-factor 2 --partitions 1
+      kafka-topics --create --if-not-exists --topic chunk_embed_out --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --replication-factor 2 --partitions 1 
+      kafka-topics --create --if-not-exists --topic convert_pdf_in --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --replication-factor 2 --partitions 1
+      kafka-topics --create --if-not-exists --topic convert_pdf_out --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --replication-factor 2 --partitions 1
+      kafka-topics --create --if-not-exists --topic index_upload_in --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --replication-factor 2 --partitions 1
+      kafka-topics --create --if-not-exists --topic index_upload_out --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --replication-factor 2 --partitions 1
+      kafka-topics --create --if-not-exists --topic ocr_summary_in --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --replication-factor 2 --partitions 1
+      kafka-topics --create --if-not-exists --topic ocr_summary_out --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --replication-factor 2 --partitions 1
+      kafka-topics --create --if-not-exists --topic query_processing_out --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --replication-factor 2 --partitions 1
+      kafka-topics --create --if-not-exists --topic query_processing_in --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --replication-factor 2 --partitions 1
+      kafka-topics --create --if-not-exists --topic document_retrieval_out --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --replication-factor 2 --partitions 1
+      kafka-topics --create --if-not-exists --topic document_retrieval_in --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --replication-factor 2 --partitions 1
+      kafka-topics --create --if-not-exists --topic answer_generation_out --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --replication-factor 2 --partitions 1
+      kafka-topics --create --if-not-exists --topic answer_generation_in --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --replication-factor 2 --partitions 1
+      kafka-topics --create --if-not-exists --topic web_crawler_in --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --replication-factor 2 --partitions 1
+      kafka-topics --create --if-not-exists --topic web_crawler_out --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --replication-factor 2 --partitions 1
+
+
+      echo -e 'Creating kafka group'
+      kafka-console-consumer --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --group 'chunk_embed_consumer' --topic chunk_embed_in
+      kafka-console-consumer --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --group 'chunk_embed_consumer' --topic chunk_embed_out
+      kafka-console-consumer --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --group 'convert_pdf_consumer' --topic convert_pdf_in
+      kafka-console-consumer --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --group 'convert_pdf_consumer' --topic convert_pdf_out
+      kafka-console-consumer --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --group 'index_upload_consumer' --topic index_upload_in
+      kafka-console-consumer --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --group 'index_upload_consumer' --topic index_upload_out
+      kafka-console-consumer --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --group 'ocr_summary_consumer' --topic ocr_summary_in
+      kafka-console-consumer --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --group 'ocr_summary_consumer' --topic ocr_summary_out
+      kafka-console-consumer --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --group 'query_processing_consumer' --topic query_processing_out
+      kafka-console-consumer --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --group 'query_processing_consumer' --topic query_processing_in
+      kafka-console-consumer --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --group 'document_retrieval_consumer' --topic document_retrieval_out
+      kafka-console-consumer --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --group 'document_retrieval_consumer' --topic document_retrieval_in
+      kafka-console-consumer --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --group 'answer_generation_consumer' --topic answer_generation_out
+      kafka-console-consumer --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --group 'answer_generation_consumer' --topic answer_generation_in 
+      kafka-console-consumer --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --group 'web_crawler_consumer' --topic web_crawler_in 
+      kafka-console-consumer --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --group 'web_crawler_consumer' --topic web_crawler_out 
+
+      echo -e 'Topic configuration update'
+      kafka-configs --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --entity-type topics --alter --entity-name chunk_embed_in --add-config retention.ms=3600000,min.insync.replicas=2
+      kafka-configs --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --entity-type topics --alter --entity-name chunk_embed_out --add-config retention.ms=3600000,min.insync.replicas=2
+      kafka-configs --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --entity-type topics --alter --entity-name convert_pdf_in --add-config retention.ms=3600000,min.insync.replicas=2
+      kafka-configs --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --entity-type topics --alter --entity-name convert_pdf_out --add-config retention.ms=3600000,min.insync.replicas=2
+      kafka-configs --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --entity-type topics --alter --entity-name index_upload_in --add-config retention.ms=3600000,min.insync.replicas=2
+      kafka-configs --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --entity-type topics --alter --entity-name index_upload_out --add-config retention.ms=3600000,min.insync.replicas=2
+      kafka-configs --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --entity-type topics --alter --entity-name ocr_summary_in --add-config retention.ms=3600000,min.insync.replicas=2
+      kafka-configs --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --entity-type topics --alter --entity-name ocr_summary_out --add-config retention.ms=3600000,min.insync.replicas=2
+      kafka-configs --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --entity-type topics --alter --entity-name query_processing_out --add-config retention.ms=3600000,min.insync.replicas=2
+      kafka-configs --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --entity-type topics --alter --entity-name query_processing_in --add-config retention.ms=3600000,min.insync.replicas=2
+      kafka-configs --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --entity-type topics --alter --entity-name document_retrieval_out --add-config retention.ms=3600000,min.insync.replicas=2
+      kafka-configs --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --entity-type topics --alter --entity-name document_retrieval_in --add-config retention.ms=3600000,min.insync.replicas=2
+      kafka-configs --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --entity-type topics --alter --entity-name answer_generation_out --add-config retention.ms=3600000,min.insync.replicas=2
+      kafka-configs --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --entity-type topics --alter --entity-name answer_generation_in --add-config retention.ms=3600000,min.insync.replicas=2
+      kafka-configs --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --entity-type topics --alter --entity-name web_crawler_in --add-config retention.ms=3600000,min.insync.replicas=2
+      kafka-configs --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --entity-type topics --alter --entity-name web_crawler_out --add-config retention.ms=3600000,min.insync.replicas=2
+      
+      echo -e 'Successfully created the following topics:'
+      kafka-topics --bootstrap-server kafka-1:9091,kafka-2:9092,kafka-3:9093 --list
+    networks:
+      - app-network
+  zookeeper: 
+    image: confluentinc/cp-zookeeper:7.0.1
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - app-network
+
+networks:
+  app-network:
